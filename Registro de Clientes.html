@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Registros de Actividades de Clientes</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+    <style>
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-5">
+    <h1 class="text-2xl font-bold text-center mb-5">Registros de Actividades de Clientes</h1>
+    <form id="registroForm" class="mb-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-4">
+                <input type="date" id="fecha" class="border p-2 w-full" required>
+                <input type="text" id="clave" placeholder="Clave" class="border p-2 w-full" required>
+                <select id="propiedad" class="border p-2 w-full" required>
+                    <option value="" disabled selected>Seleccionar una opción</option>
+                    <option value="casa_habitacion">Casa Habitación</option>
+                    <option value="departamento">Departamento</option>
+                    <option value="oficina">Oficina</option>
+                    <option value="terreno">Terreno</option>
+                </select>
+                <input type="text" id="precio" placeholder="Precio" class="border p-2 w-full" required>
+                <select id="fuente" class="border p-2 w-full" required>
+                    <option value="" disabled selected>Seleccionar una opción</option>
+                    <option value="lona">Lona</option>
+                    <option value="portales">Portales</option>
+                    <option value="redes_sociales">Redes Sociales</option>
+                    <option value="referido">Referido</option>
+                </select>
+            </div>
+            <div class="space-y-4">
+                <input type="text" id="nombre" placeholder="Nombre" class="border p-2 w-full" required>
+                <input type="text" id="apellido" placeholder="Apellido" class="border p-2 w-full" required>
+                <input type="tel" id="telefono" placeholder="Teléfono" class="border p-2 w-full" required>
+                <input type="email" id="correo" placeholder="Correo" class="border p-2 w-full" required>
+                <textarea id="requerimiento" placeholder="Requerimiento" class="border p-2 w-full" required></textarea>
+                <button type="submit" class="bg-blue-500 text-white p-2 w-full">Agregar Registro</button>
+            </div>
+        </div>
+        <div id="errorMsg" class="error mt-2"></div>
+    </form>
+    <table id="registrosTable" class="min-w-full bg-white border border-gray-200 mb-5">
+        <thead>
+            <tr>
+                <th class="border p-2">Fecha</th>
+                <th class="border p-2">Clave</th>
+                <th class="border p-2">Propiedad</th>
+                <th class="border p-2">Precio</th>
+                <th class="border p-2">Fuente</th>
+                <th class="border p-2">Nombre</th>
+                <th class="border p-2">Apellido</th>
+                <th class="border p-2">Teléfono</th>
+                <th class="border p-2">Correo</th>
+                <th class="border p-2">Requerimiento</th>
+                <th class="border p-2">Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="registrosBody"></tbody>
+    </table>
+    <button id="exportBtn" class="bg-green-500 text-white p-2">Exportar a Excel</button>
+
+    <script>
+        const registros = [];
+        const form = document.getElementById('registroForm');
+        const registrosBody = document.getElementById('registrosBody');
+        const errorMsg = document.getElementById('errorMsg');
+        const precioInput = document.getElementById('precio');
+
+        precioInput.addEventListener('input', formatPrecio);
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            if (validateForm()) {
+                const newRegistro = {
+                    fecha: form.fecha.value,
+                    clave: form.clave.value,
+                    propiedad: form.propiedad.value,
+                    precio: formatPriceToNumber(precioInput.value),
+                    fuente: form.fuente.value,
+                    nombre: form.nombre.value,
+                    apellido: form.apellido.value,
+                    telefono: form.telefono.value,
+                    correo: form.correo.value,
+                    requerimiento: form.requerimiento.value
+                };
+                registros.push(newRegistro);
+                updateTable();
+                form.reset();
+                errorMsg.textContent = '';
+            } else {
+                errorMsg.textContent = 'Por favor, completa todos los campos correctamente.';
+            }
+        });
+
+        function formatPrecio() {
+            const value = precioInput.value.replace(/\D/g, '');
+            if (value) {
+                precioInput.value = '$' + (parseInt(value) / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            } else {
+                precioInput.value = '';
+            }
+        }
+
+        function formatPriceToNumber(price) {
+            return parseFloat(price.replace(/[$,]/g, ''));
+        }
+
+        function validateForm() {
+            return [...form.elements].every(input => input.checkValidity());
+        }
+
+        function updateTable() {
+            registrosBody.innerHTML = '';
+            registros.forEach((registro, index) => {
+                const row = `<tr>
+                    <td class="border p-2">${registro.fecha}</td>
+                    <td class="border p-2">${registro.clave}</td>
+                    <td class="border p-2">${registro.propiedad}</td>
+                    <td class="border p-2">$${registro.precio.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td class="border p-2">${registro.fuente}</td>
+                    <td class="border p-2">${registro.nombre}</td>
+                    <td class="border p-2">${registro.apellido}</td>
+                    <td class="border p-2">${registro.telefono}</td>
+                    <td class="border p-2">${registro.correo}</td>
+                    <td class="border p-2">${registro.requerimiento}</td>
+                    <td class="border p-2">
+                        <button onclick="editRegistro(${index})" class="bg-yellow-500 text-white p-1">Editar</button>
+                        <button onclick="deleteRegistro(${index})" class="bg-red-500 text-white p-1">Eliminar</button>
+                    </td>
+                </tr>`;
+                registrosBody.innerHTML += row;
+            });
+        }
+
+        function deleteRegistro(index) {
+            registros.splice(index, 1);
+            updateTable();
+        }
+
+        function editRegistro(index) {
+            const registro = registros[index];
+            form.fecha.value = registro.fecha;
+            form.clave.value = registro.clave;
+            form.propiedad.value = registro.propiedad;
+            form.fuente.value = registro.fuente;
+            precioInput.value = `$${(registro.precio).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            form.nombre.value = registro.nombre;
+            form.apellido.value = registro.apellido;
+            form.telefono.value = registro.telefono;
+            form.correo.value = registro.correo;
+            form.requerimiento.value = registro.requerimiento;
+            deleteRegistro(index);
+        }
+
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            const ws = XLSX.utils.json_to_sheet(registros.map(registro => ({
+                Fecha: registro.fecha,
+                Clave: registro.clave,
+                Propiedad: registro.propiedad,
+                Precio: `$${registro.precio.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+                Fuente: registro.fuente,
+                Nombre: registro.nombre,
+                Apellido: registro.apellido,
+                Teléfono: registro.telefono,
+                Correo: registro.correo,
+                Requerimiento: registro.requerimiento
+            })));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Registros");
+            XLSX.writeFile(wb, 'registros.xlsx');
+        });
+    </script>
+</body>
+</html>
